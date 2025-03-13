@@ -1,5 +1,10 @@
+locals {
+  availability_zone = "${var.region}a"
+  instance_type = var.environment == "dev" ? "t4g.nano" : "t4g.micro"
+}
+
 provider "aws" {
-  region = "us-east-2"
+  region = var.region
 }
 
 resource "aws_vpc" "main" {
@@ -12,7 +17,7 @@ resource "aws_vpc" "main" {
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
-  availability_zone       = "us-east-2a"
+  availability_zone       = local.availability_zone
 
   tags = {
     Name = "oneflow"
@@ -46,13 +51,13 @@ resource "aws_security_group" "instance_sg" {
 }
 
 resource "aws_instance" "web" {
-  ami                    = "ami-0c30dbe0df8e646a6" # Ubunut 24 LTS arm64
-  instance_type          = "t4g.nano"
+  ami                    = var.ami
+  instance_type          = local.instance_type
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.instance_sg.id]
 
   tags = {
     Name        = "oneflow"
-    Environment = "dev"
+    Environment = var.environment
   }
 }
