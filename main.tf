@@ -9,6 +9,8 @@ provider "aws" {
 
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
+  enable_dns_hostnames = true
+  enable_dns_support = true
   tags = {
     Name = "oneflow"
   }
@@ -18,6 +20,7 @@ resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
   availability_zone       = local.availability_zone
+  map_public_ip_on_launch = true
 
   tags = {
     Name = "oneflow"
@@ -51,6 +54,7 @@ resource "aws_security_group" "instance_sg" {
 }
 
 resource "aws_instance" "web" {
+  associate_public_ip_address = true
   ami                    = var.ami
   instance_type          = local.instance_type
   subnet_id              = aws_subnet.public.id
