@@ -6,13 +6,16 @@ locals {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region = var.aws_region 
 }
 
 # Get the available availability zones
 data "aws_availability_zones" "available" {
   state = "available"
 }
+
+# Gets the current AWS account info
+data "aws_caller_identity" "current" {}
 
 # Create the VPC
 resource "aws_vpc" "oneflow_vpc" {
@@ -214,37 +217,52 @@ resource "aws_vpc_endpoint" "s3" {
 # Create a bucket policy that restricts access to the VPC endpoint
 resource "aws_s3_bucket_policy" "oneflow_bucket_policy" {
   bucket = aws_s3_bucket.oneflow_bucket.id
-
   policy = jsonencode({
-    Version = "2012-10-17"
+    Version = "2012-10-17",
+    Id      = "RestrictedBucketPolicy",
     Statement = [
       {
-        Sid       = "VPCEndpointAccess"
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "s3:*"
+        Sid       = "AllowVPCAccess",
+        Effect    = "Allow",
+        Principal = "*",
+        Action    = "s3:*",
         Resource  = [
-          aws_s3_bucket.oneflow_bucket.arn,
+          "${aws_s3_bucket.oneflow_bucket.arn}",
           "${aws_s3_bucket.oneflow_bucket.arn}/*"
-        ]
+        ],
         Condition = {
           StringEquals = {
-            "aws:sourceVpce" = aws_vpc_endpoint.s3.id
+            "aws:SourceVpc": "${aws_vpc.oneflow_vpc.id}"
           }
         }
       },
       {
-        Sid       = "DenyNonVPCAccess"
-        Effect    = "Deny"
-        Principal = "*"
-        Action    = "s3:*"
+        Sid       = "AllowTerraformServiceAccount",
+        Effect    = "Allow",
+        Principal = {
+          AWS = "${data.aws_caller_identity.current.arn}"
+        },
+        Action    = "s3:*",
         Resource  = [
-          aws_s3_bucket.oneflow_bucket.arn,
+          "${aws_s3_bucket.oneflow_bucket.arn}",
           "${aws_s3_bucket.oneflow_bucket.arn}/*"
         ]
+      },
+      {
+        Sid       = "DenyAllOtherAccess",
+        Effect    = "Deny",
+        Principal = "*",
+        Action    = "s3:*",
+        Resource  = [
+          "${aws_s3_bucket.oneflow_bucket.arn}",
+          "${aws_s3_bucket.oneflow_bucket.arn}/*"
+        ],
         Condition = {
           StringNotEquals = {
-            "aws:sourceVpce" = aws_vpc_endpoint.s3.id
+            "aws:SourceVpc": "${aws_vpc.oneflow_vpc.id}"
+          },
+          StringNotLike = {
+            "aws:PrincipalArn": "${data.aws_caller_identity.current.arn}"
           }
         }
       }

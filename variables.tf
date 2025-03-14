@@ -40,7 +40,6 @@ variable "private_subnet_cidr_blocks" {
     "10.0.104.0/24",
   ]
 }
-
 variable "environment" {
     description = "The environment in which the resources are deployed."
     type = string
@@ -50,8 +49,11 @@ variable "db_username" {
     description = "The username for the database."
     type = string
 }
-
 variable "db_password" {
     description = "The password for the database."
+    type = string
+}
+variable "aws_account_id" {
+    description = "The AWS account ID."
     type = string
 }
