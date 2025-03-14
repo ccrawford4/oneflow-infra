@@ -143,6 +143,7 @@ resource "aws_db_subnet_group" "oneflow_db_subnet_group" {
   }
 }
 
+# Create the RDS instance
 resource "aws_db_instance" "oneflow_database" {
   allocated_storage      = local.allocated_storage
   engine                 = var.settings.database.engine
@@ -154,4 +155,33 @@ resource "aws_db_instance" "oneflow_database" {
   db_subnet_group_name   = aws_db_subnet_group.oneflow_db_subnet_group.id
   vpc_security_group_ids = aws_security_group.oneflow_db_sg.*.id
   skip_final_snapshot    = var.settings.database.skip_final_snapshot
+
+  tags = {
+    Name = "oneflow_database"
+    Environment = var.environment
+  }
+}
+
+# Create the S3 Bucket
+resource "aws_s3_bucket" "oneflow_bucket" {
+  bucket = "oneflow-bucket"
+
+  tags = {
+    Name = "oneflow_bucket"
+    Environment = var.environment
+  }
+}
+
+# Create the CORS configuration for the S3 bucket
+resource "aws_s3_bucket_cors_configuration" "oneflow_bucket_cors" {
+  bucket = aws_s3_bucket.oneflow_bucket.bucket
+
+  # Only allow GET requests from the EC2 instance
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET"]
+    allowed_origins = [aws_instance.web.public_ip]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
 }
