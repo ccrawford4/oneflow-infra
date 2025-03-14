@@ -2,11 +2,20 @@ locals {
   instance_type     = var.environment == "dev" ? var.settings.web_app.dev_instance_type : var.settings.web_app.prod_instance_type
   db_instance_class = var.environment == "dev" ? var.settings.database.dev_instance_type : var.settings.database.prod_instance_type
   allocated_storage = var.environment == "dev" ? var.settings.database.dev_allocated_storage : var.settings.database.prod_allocated_storage
-  s3_bucket_name = "${var.environment}-oneflow-bucket"
+  s3_bucket_name    = "${var.environment}-oneflow-bucket"
+
+  common_tags = {
+    Environment = var.environment
+    Project     = "oneflow"
+  }
 }
 
 provider "aws" {
-  region = var.aws_region 
+  region = var.aws_region
+
+  default_tags {
+    tags = local.common_tags
+  }
 }
 
 # Get the available availability zones
@@ -68,11 +77,22 @@ resource "aws_route_table" "oneflow_public_rt" {
   }
 }
 
+# Create the private route table
+resource "aws_route_table" "oneflow_private_rt" {
+  vpc_id = aws_vpc.oneflow_vpc.id
+}
+
 # Associate the public route table with the public subnets
 resource "aws_route_table_association" "public" {
   count          = var.subnet_count.public
   route_table_id = aws_route_table.oneflow_public_rt.id
   subnet_id      = aws_subnet.oneflow_public_subnet[count.index].id
+}
+
+resource "aws_route_table_association" "private" {
+  count          = var.subnet_count.private
+  route_table_id = aws_route_table.oneflow_private_rt.id
+  subnet_id      = aws_subnet.oneflow_private_subnet[count.index].id
 }
 
 # Creates the security group for the EC2 instance
@@ -87,15 +107,16 @@ resource "aws_security_group" "instance_sg" {
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "HTTP from anywhere"
+    description = "HTTPS from anywhere"
   }
 
   # Inbound SSH traffic from the VPC
   ingress {
-    from_port = 22
-    to_port = 22
-    protocol = "tcp"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
     cidr_blocks = [aws_vpc.oneflow_vpc.cidr_block]
+    description = "SSH from VPC"
   }
 
   # Allow all outbound traffic
@@ -121,14 +142,36 @@ resource "aws_instance" "web" {
   vpc_security_group_ids      = [aws_security_group.instance_sg.id]
 
   tags = {
-    Name        = "oneflow_app"
-    Environment = var.environment
+    Name = "oneflow_app"
+  }
+}
+
+resource "aws_security_group" "instance_connect_sg" {
+  name = "instance-connect-sg"
+  description = "Security group for EC2 Instance Connect"
+  vpc_id = aws_vpc.oneflow_vpc.id
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all outbound traffic"
+  }
+
+  tags = {
+    Name = "oneflow_instance_connect_sg"
   }
 }
 
 # Create the Instance Connect Endpoint for Session Management
 resource "aws_ec2_instance_connect_endpoint" "oneflow_instance_connect" {
   subnet_id = aws_subnet.oneflow_private_subnet[0].id
+  security_group_ids = [aws_security_group.instance_connect_sg.id]
+
+  tags = {
+    Name = "oneflow_ec2_instance_connect"
+  }
 }
 
 # Create the security group for the RDS instance
@@ -142,6 +185,7 @@ resource "aws_security_group" "oneflow_db_sg" {
     to_port         = "3306"
     protocol        = "tcp"
     security_groups = [aws_security_group.instance_sg.id]
+    description = "Only allow MySQL traffic from the EC2 instance"
   }
 
   tags = {
@@ -175,7 +219,6 @@ resource "aws_db_instance" "oneflow_database" {
 
   tags = {
     Name        = "oneflow_database"
-    Environment = var.environment
   }
 }
 
@@ -185,7 +228,6 @@ resource "aws_s3_bucket" "oneflow_bucket" {
 
   tags = {
     Name        = "oneflow_bucket"
-    Environment = var.environment
   }
 }
 
@@ -203,81 +245,45 @@ resource "aws_s3_bucket_public_access_block" "oneflow_bucket_public_access_block
 resource "aws_vpc_endpoint" "s3" {
   vpc_id       = aws_vpc.oneflow_vpc.id
   service_name = "com.amazonaws.${var.aws_region}.s3"
-  
+
   vpc_endpoint_type = "Gateway"
-  route_table_ids   = [aws_route_table.oneflow_public_rt.id]
-  
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action    = ["s3:*"]
-        Effect    = "Allow"
-        Resource  = [
-          aws_s3_bucket.oneflow_bucket.arn,
-          "${aws_s3_bucket.oneflow_bucket.arn}/*"
-        ]
-        Principal = "*"
-      }
-    ]
-  })
+  route_table_ids   = [aws_route_table.oneflow_private_rt.id]
 
   tags = {
     Name = "oneflow_s3_endpoint"
   }
 }
 
-# Create a bucket policy that restricts access to the VPC endpoint
+# Create a bucket policy that restricts access to the VPC endpoint 
 resource "aws_s3_bucket_policy" "oneflow_bucket_policy" {
   bucket = aws_s3_bucket.oneflow_bucket.id
   policy = jsonencode({
     Version = "2012-10-17",
-    Id      = "RestrictedBucketPolicy",
     Statement = [
       {
-        Sid       = "AllowVPCAccess",
         Effect    = "Allow",
         Principal = "*",
         Action    = "s3:*",
         Resource  = [
-          "${aws_s3_bucket.oneflow_bucket.arn}",
+          aws_s3_bucket.oneflow_bucket.arn,
           "${aws_s3_bucket.oneflow_bucket.arn}/*"
         ],
         Condition = {
           StringEquals = {
-            "aws:SourceVpc": "${aws_vpc.oneflow_vpc.id}"
+            "aws:SourceVpc": aws_vpc.oneflow_vpc.id
           }
         }
       },
       {
-        Sid       = "AllowTerraformServiceAccount",
         Effect    = "Allow",
         Principal = {
-          AWS = "${data.aws_caller_identity.current.arn}"
+          AWS = data.aws_caller_identity.current.arn
         },
         Action    = "s3:*",
         Resource  = [
-          "${aws_s3_bucket.oneflow_bucket.arn}",
+          aws_s3_bucket.oneflow_bucket.arn,
           "${aws_s3_bucket.oneflow_bucket.arn}/*"
         ]
-      },
-      {
-        Sid       = "DenyAllOtherAccess",
-        Effect    = "Deny",
-        Principal = "*",
-        Action    = "s3:*",
-        Resource  = [
-          "${aws_s3_bucket.oneflow_bucket.arn}",
-          "${aws_s3_bucket.oneflow_bucket.arn}/*"
-        ],
-        Condition = {
-          StringNotEquals = {
-            "aws:SourceVpc": "${aws_vpc.oneflow_vpc.id}"
-          },
-          StringNotLike = {
-            "aws:PrincipalArn": "${data.aws_caller_identity.current.arn}"
-          }
-        }
       }
     ]
   })
