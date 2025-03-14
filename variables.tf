@@ -46,12 +46,6 @@ variable "environment" {
     type = string
     default = "dev"
 }
-
-variable "ami" {
-    description = "The Amazon Machine Image used to deploy the EC2 instance."
-    type = string
-}
-
 variable "db_username" {
     description = "The username for the database."
     type = string

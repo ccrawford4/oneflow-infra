@@ -1,7 +1,8 @@
 locals {
-  instance_type = var.environment == "dev" ? "t4g.nano" : "t4g.micro"
-  db_instance_class = var.environment == "dev" ? "db.t3.micro" : "db.t3.small"
-  allocated_storage = var.environment == "dev" ? 10 : 20
+  instance_type     = var.environment == "dev" ? var.settings.web_app.dev_instance_type : var.settings.web_app.prod_instance_type
+  db_instance_class = var.environment == "dev" ? var.settings.database.dev_instance_type : var.settings.database.prod_instance_type
+  allocated_storage = var.environment == "dev" ? var.settings.database.dev_allocated_storage : var.settings.database.prod_allocated_storage
+  s3_bucket_name = "${var.environment}-oneflow-bucket"
 }
 
 provider "aws" {
@@ -33,7 +34,7 @@ resource "aws_internet_gateway" "oneflow_igw" {
 
 # Create a public subnet
 resource "aws_subnet" "oneflow_public_subnet" {
-  count = var.subnet_count.public
+  count                   = var.subnet_count.public
   vpc_id                  = aws_vpc.oneflow_vpc.id
   cidr_block              = var.public_subnet_cidr_blocks[count.index]
   availability_zone       = data.aws_availability_zones.available.names[count.index]
@@ -68,7 +69,7 @@ resource "aws_route_table" "oneflow_public_rt" {
 resource "aws_route_table_association" "public" {
   count          = var.subnet_count.public
   route_table_id = aws_route_table.oneflow_public_rt.id
-  subnet_id      = 	aws_subnet.oneflow_public_subnet[count.index].id
+  subnet_id      = aws_subnet.oneflow_public_subnet[count.index].id
 }
 
 # Creates the security group for the EC2 instance
@@ -103,10 +104,10 @@ resource "aws_security_group" "instance_sg" {
 # Create the EC2 instance
 resource "aws_instance" "web" {
   associate_public_ip_address = true
-  ami                    = var.ami
-  instance_type          = local.instance_type
-  subnet_id              = aws_subnet.oneflow_public_subnet[0].id
-  vpc_security_group_ids = [aws_security_group.instance_sg.id]
+  ami                         = var.settings.web_app.ami
+  instance_type               = local.instance_type
+  subnet_id                   = aws_subnet.oneflow_public_subnet[0].id
+  vpc_security_group_ids      = [aws_security_group.instance_sg.id]
 
   tags = {
     Name        = "oneflow_app"
@@ -116,14 +117,14 @@ resource "aws_instance" "web" {
 
 # Create the security group for the RDS instance
 resource "aws_security_group" "oneflow_db_sg" {
-  name = "oneflow_db_sg"
+  name   = "oneflow_db_sg"
   vpc_id = aws_vpc.oneflow_vpc.id
 
   # Inbound rule for MySQL traffic from the EC2 isntance
   ingress {
-    from_port = "3306"
-    to_port = "3306"
-    protocol = "tcp"
+    from_port       = "3306"
+    to_port         = "3306"
+    protocol        = "tcp"
     security_groups = [aws_security_group.instance_sg.id]
   }
 
@@ -134,7 +135,7 @@ resource "aws_security_group" "oneflow_db_sg" {
 
 # Create a db subnet group named oneflow_db_subnet_group
 resource "aws_db_subnet_group" "oneflow_db_subnet_group" {
-  name       = "oneflow_db_subnet_group"
+  name = "oneflow_db_subnet_group"
 
   # add all the private subnets to the db subnet group
   subnet_ids = aws_subnet.oneflow_private_subnet.*.id
@@ -157,31 +158,96 @@ resource "aws_db_instance" "oneflow_database" {
   skip_final_snapshot    = var.settings.database.skip_final_snapshot
 
   tags = {
-    Name = "oneflow_database"
+    Name        = "oneflow_database"
     Environment = var.environment
   }
 }
 
 # Create the S3 Bucket
 resource "aws_s3_bucket" "oneflow_bucket" {
-  bucket = "oneflow-bucket"
+  bucket = local.s3_bucket_name
 
   tags = {
-    Name = "oneflow_bucket"
+    Name        = "oneflow_bucket"
     Environment = var.environment
   }
 }
 
-# Create the CORS configuration for the S3 bucket
-resource "aws_s3_bucket_cors_configuration" "oneflow_bucket_cors" {
-  bucket = aws_s3_bucket.oneflow_bucket.bucket
+# Block public access to the S3 bucket
+resource "aws_s3_bucket_public_access_block" "oneflow_bucket_public_access_block" {
+  bucket = aws_s3_bucket.oneflow_bucket.id
 
-  # Only allow GET requests from the EC2 instance
-  cors_rule {
-    allowed_headers = ["*"]
-    allowed_methods = ["GET"]
-    allowed_origins = [aws_instance.web.public_ip]
-    expose_headers  = ["ETag"]
-    max_age_seconds = 3000
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Create a VPC endpoint for S3
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id       = aws_vpc.oneflow_vpc.id
+  service_name = "com.amazonaws.${var.aws_region}.s3"
+  
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.oneflow_public_rt.id]
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action    = ["s3:*"]
+        Effect    = "Allow"
+        Resource  = [
+          aws_s3_bucket.oneflow_bucket.arn,
+          "${aws_s3_bucket.oneflow_bucket.arn}/*"
+        ]
+        Principal = "*"
+      }
+    ]
+  })
+
+  tags = {
+    Name = "oneflow_s3_endpoint"
   }
+}
+
+# Create a bucket policy that restricts access to the VPC endpoint
+resource "aws_s3_bucket_policy" "oneflow_bucket_policy" {
+  bucket = aws_s3_bucket.oneflow_bucket.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "VPCEndpointAccess"
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource  = [
+          aws_s3_bucket.oneflow_bucket.arn,
+          "${aws_s3_bucket.oneflow_bucket.arn}/*"
+        ]
+        Condition = {
+          StringEquals = {
+            "aws:sourceVpce" = aws_vpc_endpoint.s3.id
+          }
+        }
+      },
+      {
+        Sid       = "DenyNonVPCAccess"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource  = [
+          aws_s3_bucket.oneflow_bucket.arn,
+          "${aws_s3_bucket.oneflow_bucket.arn}/*"
+        ]
+        Condition = {
+          StringNotEquals = {
+            "aws:sourceVpce" = aws_vpc_endpoint.s3.id
+          }
+        }
+      }
+    ]
+  })
 }
