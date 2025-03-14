@@ -3,6 +3,7 @@ locals {
   db_instance_class = var.environment == "dev" ? var.settings.database.dev_instance_type : var.settings.database.prod_instance_type
   allocated_storage = var.environment == "dev" ? var.settings.database.dev_allocated_storage : var.settings.database.prod_allocated_storage
   s3_bucket_name    = "${var.environment}-oneflow-bucket"
+  key_name = "${var.environment}-oneflow-key-${var.aws_region}"
 
   common_tags = {
     Environment = var.environment
@@ -110,12 +111,12 @@ resource "aws_security_group" "instance_sg" {
     description = "HTTPS from anywhere"
   }
 
-  # Inbound SSH traffic from the VPC
+  # Allow inbound SSH traffic
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [aws_vpc.oneflow_vpc.cidr_block]
+    cidr_blocks = ["0.0.0.0/0"] 
     description = "SSH from VPC"
   }
 
@@ -132,6 +133,30 @@ resource "aws_security_group" "instance_sg" {
     Name = "oneflow"
   }
 }
+# Generate SSH Key Pair
+resource "tls_private_key" "ec2_ssh_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+# Store Public Key in AWS EC2 Key Pair
+resource "aws_key_pair" "generated_key" {
+  key_name   = local.key_name
+  public_key = tls_private_key.ec2_ssh_key.public_key_openssh
+}
+
+# Store Private Key in Secrets Manager
+resource "aws_secretsmanager_secret" "ssh_key_secret" {
+  name                    = local.key_name
+  description             = "Private SSH key for EC2 instance access"
+}
+
+resource "aws_secretsmanager_secret_version" "ssh_key_secret_version" {
+  secret_id     = aws_secretsmanager_secret.ssh_key_secret.id
+  secret_string = jsonencode({
+    private_key = tls_private_key.ec2_ssh_key.private_key_pem
+  })
+}
 
 # Create the EC2 instance
 resource "aws_instance" "web" {
@@ -140,37 +165,10 @@ resource "aws_instance" "web" {
   instance_type               = local.instance_type
   subnet_id                   = aws_subnet.oneflow_public_subnet[0].id
   vpc_security_group_ids      = [aws_security_group.instance_sg.id]
+  key_name      = aws_key_pair.generated_key.key_name
 
   tags = {
     Name = "oneflow_app"
-  }
-}
-
-resource "aws_security_group" "instance_connect_sg" {
-  name = "instance-connect-sg"
-  description = "Security group for EC2 Instance Connect"
-  vpc_id = aws_vpc.oneflow_vpc.id
-
-  egress {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow all outbound traffic"
-  }
-
-  tags = {
-    Name = "oneflow_instance_connect_sg"
-  }
-}
-
-# Create the Instance Connect Endpoint for Session Management
-resource "aws_ec2_instance_connect_endpoint" "oneflow_instance_connect" {
-  subnet_id = aws_subnet.oneflow_private_subnet[0].id
-  security_group_ids = [aws_security_group.instance_connect_sg.id]
-
-  tags = {
-    Name = "oneflow_ec2_instance_connect"
   }
 }
 
