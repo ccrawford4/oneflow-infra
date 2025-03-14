@@ -81,13 +81,21 @@ resource "aws_security_group" "instance_sg" {
   description = "Security group for EC2 instance"
   vpc_id      = aws_vpc.oneflow_vpc.id
 
-  # Inbound rule for HTTPS traffic
+  # Inbound all inbound HTTPS traffic
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
     description = "HTTP from anywhere"
+  }
+
+  # Inbound SSH traffic from the VPC
+  ingress {
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = [aws_vpc.oneflow_vpc.cidr_block]
   }
 
   # Allow all outbound traffic
@@ -116,6 +124,11 @@ resource "aws_instance" "web" {
     Name        = "oneflow_app"
     Environment = var.environment
   }
+}
+
+# Create the Instance Connect Endpoint for Session Management
+resource "aws_ec2_instance_connect_endpoint" "oneflow_instance_connect" {
+  subnet_id = aws_subnet.oneflow_private_subnet[0].id
 }
 
 # Create the security group for the RDS instance
