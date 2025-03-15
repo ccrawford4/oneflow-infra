@@ -6,8 +6,7 @@
 3. [mysql cli](https://dev.mysql.com/doc/mysql-getting-started/en/) >= 9.2.0
 4. [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
-## Getting started
-### Installation
+## Installation
 1. Clone the repository
 ```bash
 # If using HTTPS
@@ -21,7 +20,7 @@ git clone git@github.com:ccrawford4/hs-cloud-interview.git
 cd ../[directory path to where the repository was cloned]/hs-cloud-interview
 ```
 
-### Enviornment Configuration
+## Enviornment Configuration
 1. Create a new `secrets.auto.tfvars` file
 ```bash
 cp secrets.auto.tfvars.example secrets.auto.tfvars
@@ -42,7 +41,7 @@ aws configure --profile terrafrom
 ```
 a. Credentials provided by OneFlow admin
 
-### Infrastructure Deployment
+## Infrastructure Deployment
 1. Run the following commands
 ```bash
 terraform init
@@ -50,8 +49,8 @@ terraform plan
 AWS_PROFILE=terraform terraform apply
 ```
 
-### Testing
-#### EC2
+## Testing
+### EC2
 1. Copy the `instance_public_dns` output from the `terraform apply` step
 2. Attempt a curl request using HTTP
 ```bash
@@ -69,8 +68,8 @@ curl: (7) Failed to connect to <instance_public_dns> port 443 after 66 ms: Could
 ```
 This means that your EC2 is successfully accepting secure HTTPS connections over port 443
 
-#### MySQL RDS
-##### Public access check
+### MySQL RDS
+#### Public access check
 1. Copy the `rds_endpoint` output from the `terraform apply` step
 2. Attempt to connect to the MySQL instance using the following command:
 ```bash
@@ -78,7 +77,7 @@ mysql -u <db_username> --password=<db_password> -h <rds_endpoint excluding :db_p
 ```
 The request should hang. If you don't receive a response in ~5 seconds or less, then your MySQL RDS instance is successfully blocking connections from outside of the VPC.
 
-##### Private access check
+#### Private access check
 1. Take note of the `key_name` from the `terraform apply` step
 2. Take note of the `instance_public_dns` from the `terraform apply` step
 3. Run the `download-key.sh` script
