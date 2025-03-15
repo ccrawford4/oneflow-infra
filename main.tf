@@ -101,7 +101,7 @@ resource "aws_security_group" "instance_sg" {
   description = "Security group for EC2 instance"
   vpc_id      = aws_vpc.oneflow_vpc.id
 
-  # Inbound all inbound HTTPS traffic
+  # Inbound inbound HTTPS traffic
   ingress {
     from_port   = 443
     to_port     = 443
@@ -182,7 +182,6 @@ resource "aws_security_group" "oneflow_db_sg" {
     to_port         = var.db_port
     protocol        = "tcp"
     security_groups = [aws_security_group.instance_sg.id]
-    description = "Only allow MySQL traffic from the EC2 instance"
   }
 
   tags = {
