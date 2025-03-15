@@ -33,6 +33,7 @@ enviornment = "<enviornment name>" # dev or prod
 aws_account_id = "<aws account id>"
 db_username = "<the database username>"
 db_password = "<the database password>"
+db_name = "<the name of the database>"
 ```
 3. Configure your aws cli with the terraform user
 ```bash
@@ -72,7 +73,7 @@ This means that your EC2 is successfully accepting secure HTTPS connections over
 1. Copy the `rds_endpoint` output from the `terraform apply` step
 2. Attempt to connect to the MySQL instance using the following command:
 ```bash
-mysql -u <db_username> --password=<db_password> -h <rds_endpoint> product
+mysql -u <db_username> --password=<db_password> -h <rds_endpoint excluding :db_port_number>
 ```
 The request should hang. If you don't receive a response in ~5 seconds or less, then your MySQL RDS instance is successfully blocking connections from outside of the VPC.
 
@@ -83,6 +84,48 @@ The request should hang. If you don't receive a response in ~5 seconds or less, 
 ```bash
 ./download-key.sh <key_name> <instance_public_dns>
 ```
-When prompted like so: `Connect now? (y/n)` type 'y' and then press the enter key
-4. 
+When prompted like so: `Connect now? (y/n)` type 'y' and then press the enter key.
+The script will SSH into the EC2 instance using the temporary key it created. You should see an output like so:
+```bash
+   ,     #_
+   ~\_  ####_        Amazon Linux 2023
+  ~~  \_#####\
+  ~~     \###|
+  ~~       \#/ ___   https://aws.amazon.com/linux/amazon-linux-2023
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+Last login: Sat Mar 15 16:00:02 2025 from 138.202.26.81
+[ec2-user@ip-10-0-1-110 ~]$
+```
+4. Use the same MySQL command from before and verfiy that you can connect. You should see an output like so:
+```bash
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+Your MySQL connection id is 33
+Server version: 8.0.40 Source distribution
+
+Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+MySQL [(none)]> 
+```
+5. Within the MySQL client, type `SHOW DATABASES;` and then press the enter key.
+You should now see a list of databases including the one you named using the `db_name` variable:
+```bash
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| <your db name>     |
+| sys                |
++--------------------+
+```
+
+#### S3 Bucket
+##### Public access check
 

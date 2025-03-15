@@ -16,7 +16,15 @@ SSH_USER=ec2-user # use default user
 KEY_FILE="$HOME/.ssh/temp_key_$(date +%s).pem"
 
 echo "Retrieving key from AWS Secrets Manager..."
-aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --query SecretString --output text >"$KEY_FILE"
+
+# First retrieve the secret and save to a temporary file
+aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --query SecretString --output text >temp_secret.json
+
+# Then use jq to extract just the "private_key" field content and save to your key file
+jq -r '.private_key' temp_secret.json >"$KEY_FILE"
+
+# Remove the temporary file
+rm temp_secret.json
 
 if [ $? -ne 0 ]; then
   echo "Failed to retrieve the key from AWS Secrets Manager"
@@ -26,11 +34,6 @@ fi
 # Set proper permissions
 chmod 600 "$KEY_FILE"
 echo "Key saved to $KEY_FILE with proper permissions"
-
-# Open in vim if requested
-if [ "$4" == "--edit" ] || [ "$4" == "-e" ]; then
-  vim "$KEY_FILE"
-fi
 
 # Display SSH command
 echo ""

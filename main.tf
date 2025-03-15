@@ -3,7 +3,7 @@ locals {
   db_instance_class = var.environment == "dev" ? var.settings.database.dev_instance_type : var.settings.database.prod_instance_type
   allocated_storage = var.environment == "dev" ? var.settings.database.dev_allocated_storage : var.settings.database.prod_allocated_storage
   s3_bucket_name    = "${var.environment}-oneflow-bucket"
-  key_name = "${var.environment}-oneflow-key-${var.aws_region}"
+  key_name = "${var.environment}-oneflow-key-${var.aws_region}-${formatdate("YYYYMMDDhhmmss", timestamp())}" # Use current time to avoid repeat key names in AWS secrets
 
   common_tags = {
     Environment = var.environment
@@ -200,6 +200,10 @@ resource "aws_db_subnet_group" "oneflow_db_subnet_group" {
   tags = {
     Name = "oneflow_db_subnet_group"
   }
+
+  lifecycle {
+      create_before_destroy = true
+  }
 }
 
 # Create the RDS instance
@@ -218,6 +222,8 @@ resource "aws_db_instance" "oneflow_database" {
   tags = {
     Name        = "oneflow_database"
   }
+
+  depends_on = [aws_db_subnet_group.oneflow_db_subnet_group]
 }
 
 # Create the S3 Bucket
