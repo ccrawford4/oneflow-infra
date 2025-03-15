@@ -44,9 +44,10 @@ a. Credentials provided by OneFlow admin
 ## Infrastructure Deployment
 1. Run the following commands
 ```bash
+export AWS_PROFILE=terraform
 terraform init
 terraform plan
-AWS_PROFILE=terraform terraform apply
+terraform apply
 ```
 
 ## Testing
