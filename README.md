@@ -82,7 +82,7 @@ The request should hang. If you don't receive a response in ~5 seconds or less, 
 2. Take note of the `instance_public_dns` from the `terraform apply` step
 3. Run the `download-key.sh` script
 ```bash
-./download-key.sh <key_name> <instance_public_dns>
+AWS_PROFILE=terraform ./download-key.sh <key_name> <instance_public_dns>
 ```
 When prompted like so: `Connect now? (y/n)` type 'y' and then press the enter key.
 The script will SSH into the EC2 instance using the temporary key it created. You should see an output like so:
@@ -128,4 +128,9 @@ You should now see a list of databases including the one you named using the `db
 
 #### S3 Bucket
 ##### Public access check
+1. In your host machines shell (not in the ec2) run the following command:
+```bash
 
+```
+```
+```

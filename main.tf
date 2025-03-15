@@ -2,7 +2,6 @@ locals {
   instance_type     = var.environment == "dev" ? var.settings.web_app.dev_instance_type : var.settings.web_app.prod_instance_type
   db_instance_class = var.environment == "dev" ? var.settings.database.dev_instance_type : var.settings.database.prod_instance_type
   allocated_storage = var.environment == "dev" ? var.settings.database.dev_allocated_storage : var.settings.database.prod_allocated_storage
-  s3_bucket_name    = "${var.environment}-oneflow-bucket"
   key_name = "${var.environment}-oneflow-key-${var.aws_region}-${formatdate("YYYYMMDDhhmmss", timestamp())}" # Use current time to avoid repeat key names in AWS secrets
 
   common_tags = {
@@ -224,71 +223,4 @@ resource "aws_db_instance" "oneflow_database" {
   }
 
   depends_on = [aws_db_subnet_group.oneflow_db_subnet_group]
-}
-
-# Create the S3 Bucket
-resource "aws_s3_bucket" "oneflow_bucket" {
-  bucket = local.s3_bucket_name
-
-  tags = {
-    Name        = "oneflow_bucket"
-  }
-}
-
-# Block public access to the S3 bucket
-resource "aws_s3_bucket_public_access_block" "oneflow_bucket_public_access_block" {
-  bucket = aws_s3_bucket.oneflow_bucket.id
-
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
-# Create a VPC endpoint for S3
-resource "aws_vpc_endpoint" "s3" {
-  vpc_id       = aws_vpc.oneflow_vpc.id
-  service_name = "com.amazonaws.${var.aws_region}.s3"
-
-  vpc_endpoint_type = "Gateway"
-  route_table_ids   = [aws_route_table.oneflow_private_rt.id]
-
-  tags = {
-    Name = "oneflow_s3_endpoint"
-  }
-}
-
-# Create a bucket policy that restricts access to the VPC endpoint 
-resource "aws_s3_bucket_policy" "oneflow_bucket_policy" {
-  bucket = aws_s3_bucket.oneflow_bucket.id
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect    = "Allow",
-        Principal = "*",
-        Action    = "s3:*",
-        Resource  = [
-          aws_s3_bucket.oneflow_bucket.arn,
-          "${aws_s3_bucket.oneflow_bucket.arn}/*"
-        ],
-        Condition = {
-          StringEquals = {
-            "aws:SourceVpc": aws_vpc.oneflow_vpc.id
-          }
-        }
-      },
-      {
-        Effect    = "Allow",
-        Principal = {
-          AWS = data.aws_caller_identity.current.arn
-        },
-        Action    = "s3:*",
-        Resource  = [
-          aws_s3_bucket.oneflow_bucket.arn,
-          "${aws_s3_bucket.oneflow_bucket.arn}/*"
-        ]
-      }
-    ]
-  })
 }
