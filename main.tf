@@ -157,10 +157,21 @@ resource "aws_secretsmanager_secret_version" "ssh_key_secret_version" {
   })
 }
 
+# Create the AMI copy for the desired region
+resource "aws_ami_copy" "oneflow_ami_copy" {
+  name = "oneflow_ami_copy"
+  source_ami_id = var.settings.web_app.source_ami_id
+  source_ami_region = var.settings.web_app.source_ami_region
+
+  tags = {
+    Name = "oneflow_ami_copy"
+  }
+}
+
 # Create the EC2 instance
 resource "aws_instance" "web" {
   associate_public_ip_address = true
-  ami                         = var.settings.web_app.ami
+  ami                         = aws_ami_copy.oneflow_ami_copy.id
   instance_type               = local.instance_type
   subnet_id                   = aws_subnet.oneflow_public_subnet[0].id
   vpc_security_group_ids      = [aws_security_group.instance_sg.id]
@@ -210,7 +221,7 @@ resource "aws_db_instance" "oneflow_database" {
   engine                 = var.settings.database.engine
   engine_version         = var.settings.database.engine_version
   instance_class         = local.db_instance_class
-  db_name                = var.settings.database.name
+  db_name                = var.db_name
   username               = var.db_username
   password               = var.db_password
   db_subnet_group_name   = aws_db_subnet_group.oneflow_db_subnet_group.id

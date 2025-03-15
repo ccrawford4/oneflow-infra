@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Check if required arguments are provided
-if [ $# -lt 2 ]; then
-  echo "Usage: $0 <aws-secret-name> <ec2-endpoint>"
+if [ $# -lt 3 ]; then
+  echo "Usage: $0 <aws-secret-name> <ec2-endpoint> <region>"
   echo "Example: $0 my-ec2-key ec2-12-34-56-78.compute-1.amazonaws.com ec2-user"
   exit 1
 fi
@@ -11,6 +11,14 @@ fi
 SECRET_NAME=$1
 EC2_ENDPOINT=$2
 SSH_USER=ec2-user # use default user
+REGION=$3
+
+echo "Setting AWS_PROFILE to terraform user"
+export AWS_PROFILE=terraform
+
+# Set the default region
+echo "Setting aws default region..."
+export AWS_DEFAULT_REGION=$REGION
 
 # Create a temporary key file
 KEY_FILE="$HOME/.ssh/temp_key_$(date +%s).pem"

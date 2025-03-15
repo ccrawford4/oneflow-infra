@@ -1,4 +1,4 @@
-# OneFlow infrastructure
+# OneFlow Infrastructure
 
 ## Prerequisites
 1. [terraform](https://developer.hashicorp.com/terraform/install) >= v1.10.5
@@ -26,14 +26,15 @@ cd ../[directory path to where the repository was cloned]/hs-cloud-interview
 ```bash
 cp secrets.auto.tfvars.example secrets.auto.tfvars
 ```
-2. Change the fields underneath the `TODO` comment
+2. Open the new `secrets.auto.tfvars` file and populate the fields underneath the `TODO` comment:
 ```terraform
 aws_region = "<aws region>"
-enviornment = "<enviornment name>" # dev or prod
+environment = "<enviornment name>" # dev or prod
 aws_account_id = "<aws account id>"
-db_username = "<the database username>"
-db_password = "<the database password>"
-db_name = "<the name of the database>"
+db_username = "<database username>"
+db_password = "<database password>"
+db_name = "<database name>"
+db_port = <database port>
 ```
 3. Configure your aws cli with the terraform user
 ```bash
@@ -82,7 +83,7 @@ The request should hang. If you don't receive a response in ~5 seconds or less, 
 2. Take note of the `instance_public_dns` from the `terraform apply` step
 3. Run the `download-key.sh` script
 ```bash
-AWS_PROFILE=terraform ./download-key.sh <key_name> <instance_public_dns>
+./download-key.sh <key_name> <instance_public_dns> <aws region>
 ```
 When prompted like so: `Connect now? (y/n)` type 'y' and then press the enter key.
 The script will SSH into the EC2 instance using the temporary key it created. You should see an output like so:
