@@ -72,9 +72,9 @@ This means that your EC2 is successfully accepting secure HTTPS connections over
 1. Copy the `rds_endpoint` output from the `terraform apply` step
 2. Attempt to connect to the MySQL instance using the following command:
 ```bash
-mysql -u <db_username> --password=<db_password> -h </db><rds_endpoint> product
+mysql -u <db_username> --password=<db_password> -h <rds_endpoint> product
 ```
-Verify that you are unable to connect since the RDS instance should block connections from outside of the VPC
+The request should hang. If you don't receive a response in ~5 seconds or less, then your MySQL RDS instance is successfully blocking connections from outside of the VPC.
 
 ##### Private access check
 1. Take note of the `key_name` from the `terraform apply` step
