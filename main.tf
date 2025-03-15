@@ -18,6 +18,14 @@ provider "aws" {
   }
 }
 
+terraform {
+  backend "s3" {
+    bucket = "oneflow-terraform-state-10080483"
+    key = "state"
+    region = "us-east-2"
+  }
+}
+
 # Get the available availability zones
 data "aws_availability_zones" "available" {
   state = "available"
