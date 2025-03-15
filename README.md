@@ -125,12 +125,3 @@ You should now see a list of databases including the one you named using the `db
 | sys                |
 +--------------------+
 ```
-
-#### S3 Bucket
-##### Public access check
-1. In your host machines shell (not in the ec2) run the following command:
-```bash
-
-```
-```
-```
