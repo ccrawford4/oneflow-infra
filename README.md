@@ -4,16 +4,29 @@
 1. [terraform](https://developer.hashicorp.com/terraform/install) >= v1.10.5
 2. [aws cli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) >= 2.18.5
 3. [mysql cli](https://dev.mysql.com/doc/mysql-getting-started/en/) >= 9.2.0
+4. [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
+## Getting started
+### Installation
+1. Clone the repository
+```bash
+# If using HTTPS
+git clone https://github.com/ccrawford4/hs-cloud-interview.git
 
-## Usage
+# If using SSH
+git clone git@github.com:ccrawford4/hs-cloud-interview.git
+```
+2. Naviate to the source directory
+```bash
+cd ../[directory path to where the repository was cloned]/hs-cloud-interview
+```
 
 ### Enviornment Configuration
 1. Create a new `secrets.auto.tfvars` file
 ```bash
 cp secrets.auto.tfvars.example secrets.auto.tfvars
 ```
-2. Change the fieldsunderneath the `TODO` comment
+2. Change the fields underneath the `TODO` comment
 ```terraform
 aws_region = "<aws region>"
 enviornment = "<enviornment name>" # dev or prod
