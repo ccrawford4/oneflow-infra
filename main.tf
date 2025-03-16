@@ -333,7 +333,7 @@ resource "aws_security_group" "oneflow_db_sg" {
 
 # Create a db subnet group named oneflow_db_subnet_group
 resource "aws_db_subnet_group" "oneflow_db_subnet_group" {
-  name = "oneflow_db_subnet_group"
+  name = "oneflow_db_subnet_group-${terraform.workspace}"
 
   # add all the private subnets to the db subnet group
   subnet_ids = aws_subnet.oneflow_private_subnet.*.id
