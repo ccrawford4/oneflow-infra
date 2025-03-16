@@ -129,7 +129,7 @@ You should now see a list of databases including the one you named using the `db
 ```
 ### S3 Bucket
 1. Copy the `s3_bucket_name` output from the `terraform apply` step
-2. Run the following command using a aws profile that is not associated with the terraform user. In this example I use my `default` profile:
+2. Run the following command using a aws profile that is not associated with the terraform user. This example uses a separate `default` profile:
 ```bash
 AWS_PROFILE=default aws s3 ls s3://<s3_bucket_name>/
 ```
