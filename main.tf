@@ -204,7 +204,7 @@ resource "aws_iam_role" "ec2_s3_access_role" {
 
 # Create IAM policy for S3 access
 resource "aws_iam_policy" "s3_access_policy" {
-  name        = "s3_access_policy-${terraform.workspace}"
+  name        = "${local.unique_prefix}-s3_access_policy"
   description = "Policy to allow access to specific S3 bucket"
 
   policy = jsonencode({
