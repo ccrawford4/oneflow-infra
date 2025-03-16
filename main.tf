@@ -5,12 +5,12 @@ resource "random_string" "random" {
 }
 
 locals {
-  current_timestamp = "${formatdate("YYYYMMDDhhmmss", timestamp())}"
+  unique_prefix = "${var.environment}-${terraform.workspace}-${random_string.random.id}" # Use a unique prefix to resolve name conflicts
   instance_type     = var.environment == "dev" ? var.settings.web_app.dev_instance_type : var.settings.web_app.prod_instance_type
   db_instance_class = var.environment == "dev" ? var.settings.database.dev_instance_type : var.settings.database.prod_instance_type
   allocated_storage = var.environment == "dev" ? var.settings.database.dev_allocated_storage : var.settings.database.prod_allocated_storage
-  key_name = "${var.environment}-oneflow-key-${terraform.workspace}-${random_string.random.id}" # Use timestamp to avoid repeat key names in AWS secrets
-  bucket_name = "${var.environment}-oneflow-bucket-${random_string.random.id}" # Use timestamp to avoid repeat bucket names
+  key_name = "${local.unique_prefix}-oneflow-key" 
+  bucket_name = "${local.unique_prefix}-oneflow-bucket"
 
   common_tags = {
     Environment = var.environment
@@ -175,7 +175,7 @@ resource "aws_secretsmanager_secret_version" "ssh_key_secret_version" {
 
 # Create the AMI copy for the desired region
 resource "aws_ami_copy" "oneflow_ami_copy" {
-  name = "oneflow_ami_copy-${terraform.workspace}"
+  name = "${local.unique_prefix}-oneflow_ami_copy"
   source_ami_id = var.settings.web_app.source_ami_id
   source_ami_region = var.settings.web_app.source_ami_region
 
@@ -186,7 +186,7 @@ resource "aws_ami_copy" "oneflow_ami_copy" {
 
 # Create IAM role for EC2 instance
 resource "aws_iam_role" "ec2_s3_access_role" {
-  name = "ec2_s3_access_role-${terraform.workspace}"
+  name = "${local.unique_prefix}-ec2_s3_access_role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -234,7 +234,7 @@ resource "aws_iam_role_policy_attachment" "s3_access_attachment" {
 
 # Create instance profile
 resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "ec2_profile-${terraform.workspace}"
+  name = "${local.unique_prefix}-ec2_profile"
   role = aws_iam_role.ec2_s3_access_role.name
 }
 
@@ -333,7 +333,7 @@ resource "aws_security_group" "oneflow_db_sg" {
 
 # Create a db subnet group named oneflow_db_subnet_group
 resource "aws_db_subnet_group" "oneflow_db_subnet_group" {
-  name = "oneflow_db_subnet_group-${terraform.workspace}"
+  name = "${local.unique_prefix}-oneflow_db_subnet_group"
 
   # add all the private subnets to the db subnet group
   subnet_ids = aws_subnet.oneflow_private_subnet.*.id
