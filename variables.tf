@@ -1,8 +1,3 @@
-variable "aws_region" {
-    description = "The AWS region to launch resources."
-    type = string
-    default = "us-east-2"
-}
 variable "vpc_cidr_block" {
   description = "CIDR block for VPC"
   type        = string

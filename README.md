@@ -31,7 +31,6 @@
 
 2. Edit the `secrets.auto.tfvars` file with your configuration values:
    ```terraform
-   aws_region = "<aws region>"
    environment = "<environment name>"  # dev or prod
    aws_account_id = "<aws account id>"
    db_username = "<database username>"
@@ -47,12 +46,29 @@
    > Note: Credentials will be provided by OneFlow admin
 
 ## Infrastructure Deployment
-
-Deploy the infrastructure:
+1. Set the `AWS_PROFILE` to the `terraform` user
 ```bash
 export AWS_PROFILE=terraform
+```
+2. Initialize the backend
+```bash
 terraform init
+```
+3. Select an existing workspace or create a new one. The workspaces are associated with the aws region you are deploying to.
+```bash
+# To view and select an existing workspace
+terraform workspace list # List all available workspaces
+terraform workspace select <workspace name>
+
+# Or create a new one
+terraform workspace new <aws region name>
+```
+4. Run terraform plan
+```bash
 terraform plan
+```
+5. Run terraform apply
+```bash
 terraform apply
 ```
 
