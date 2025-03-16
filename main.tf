@@ -9,7 +9,7 @@ locals {
   instance_type     = var.environment == "dev" ? var.settings.web_app.dev_instance_type : var.settings.web_app.prod_instance_type
   db_instance_class = var.environment == "dev" ? var.settings.database.dev_instance_type : var.settings.database.prod_instance_type
   allocated_storage = var.environment == "dev" ? var.settings.database.dev_allocated_storage : var.settings.database.prod_allocated_storage
-  key_name = "${var.environment}-oneflow-key-${var.aws_region}-${random_string.random.id}" # Use timestamp to avoid repeat key names in AWS secrets
+  key_name = "${var.environment}-oneflow-key-${terraform.workspace}-${random_string.random.id}" # Use timestamp to avoid repeat key names in AWS secrets
   bucket_name = "${var.environment}-oneflow-bucket-${random_string.random.id}" # Use timestamp to avoid repeat bucket names
 
   common_tags = {
@@ -19,7 +19,7 @@ locals {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region = terraform.workspace
 
   default_tags {
     tags = local.common_tags
@@ -29,7 +29,7 @@ provider "aws" {
 terraform {
   backend "s3" {
     bucket = "oneflow-terraform-state-10080483"
-    key = "state"
+    key = "terraform.tfstate"
     region = "us-east-2"
   }
 }
