@@ -1,8 +1,16 @@
+resource "random_string" "random" {
+  length = 8
+  special = false
+  upper = false
+}
+
 locals {
+  current_timestamp = "${formatdate("YYYYMMDDhhmmss", timestamp())}"
   instance_type     = var.environment == "dev" ? var.settings.web_app.dev_instance_type : var.settings.web_app.prod_instance_type
   db_instance_class = var.environment == "dev" ? var.settings.database.dev_instance_type : var.settings.database.prod_instance_type
   allocated_storage = var.environment == "dev" ? var.settings.database.dev_allocated_storage : var.settings.database.prod_allocated_storage
-  key_name = "${var.environment}-oneflow-key-${var.aws_region}-${formatdate("YYYYMMDDhhmmss", timestamp())}" # Use current time to avoid repeat key names in AWS secrets
+  key_name = "${var.environment}-oneflow-key-${var.aws_region}-${random_string.random.id}" # Use timestamp to avoid repeat key names in AWS secrets
+  bucket_name = "${var.environment}-oneflow-bucket-${random_string.random.id}" # Use timestamp to avoid repeat bucket names
 
   common_tags = {
     Environment = var.environment
@@ -176,6 +184,120 @@ resource "aws_ami_copy" "oneflow_ami_copy" {
   }
 }
 
+# Create IAM role for EC2 instance
+resource "aws_iam_role" "ec2_s3_access_role" {
+  name = "ec2_s3_access_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      },
+    ]
+  })
+}
+
+# Create IAM policy for S3 access
+resource "aws_iam_policy" "s3_access_policy" {
+  name        = "s3_access_policy"
+  description = "Policy to allow access to specific S3 bucket"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket"
+        ]
+        Effect   = "Allow"
+        Resource = [
+          "arn:aws:s3:::${local.bucket_name}",
+          "arn:aws:s3:::${local.bucket_name}/*"
+        ]
+      },
+    ]
+  })
+}
+
+# Attach policy to role
+resource "aws_iam_role_policy_attachment" "s3_access_attachment" {
+  role       = aws_iam_role.ec2_s3_access_role.name
+  policy_arn = aws_iam_policy.s3_access_policy.arn
+}
+
+# Create instance profile
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "ec2_profile"
+  role = aws_iam_role.ec2_s3_access_role.name
+}
+
+# Create S3 bucket
+resource "aws_s3_bucket" "oneflow_bucket" {
+  bucket = local.bucket_name
+}
+
+# Block public access to the S3 bucket
+resource "aws_s3_bucket_public_access_block" "block_public_access" {
+  bucket = aws_s3_bucket.oneflow_bucket.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# S3 bucket policy to deny access from anywhere except the EC2 instance's role
+resource "aws_s3_bucket_policy" "bucket_policy" {
+  bucket = aws_s3_bucket.oneflow_bucket.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          "arn:aws:s3:::${local.bucket_name}",
+          "arn:aws:s3:::${local.bucket_name}/*"
+        ]
+        Condition = {
+          StringNotEquals = {
+            "aws:PrincipalArn": [
+              aws_iam_role.ec2_s3_access_role.arn,
+              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/terraform"
+            ]
+          }
+        }
+      },
+      {
+        Effect    = "Allow"
+        Principal = {
+          AWS = [
+            aws_iam_role.ec2_s3_access_role.arn,
+            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/terraform"
+          ]
+        }
+        Action    = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          "arn:aws:s3:::${local.bucket_name}",
+          "arn:aws:s3:::${local.bucket_name}/*"
+        ]
+      }
+    ]
+  })
+  depends_on = [aws_s3_bucket_public_access_block.block_public_access]
+}
+
 # Create the EC2 instance
 resource "aws_instance" "web" {
   associate_public_ip_address = true
@@ -184,6 +306,7 @@ resource "aws_instance" "web" {
   subnet_id                   = aws_subnet.oneflow_public_subnet[0].id
   vpc_security_group_ids      = [aws_security_group.instance_sg.id]
   key_name      = aws_key_pair.generated_key.key_name
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 
   tags = {
     Name = "oneflow_app"

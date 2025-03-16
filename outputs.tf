@@ -7,3 +7,6 @@ output "rds_endpoint" {
 output "key_name" {
     value = local.key_name
 }
+output "s3_bucket_name" {
+    value = local.bucket_name
+}

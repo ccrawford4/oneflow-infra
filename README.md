@@ -126,3 +126,18 @@ You should now see a list of databases including the one you named using the `db
 | sys                |
 +--------------------+
 ```
+### S3 Bucket
+1. Copy the `s3_bucket_name` output from the `terraform apply` step
+2. Run the following command using a aws profile that is not associated with the terraform user. In this example I use my `default` profile:
+```bash
+AWS_PROFILE=default aws s3 ls s3://<s3_bucket_name>/
+```
+You should receive an output like so:
+```bash
+An error occurred (AccessDenied) when calling the ListObjectsV2 operation: User: arn:aws:iam::<user arn> is not authorized to perform: s3:ListBucket on resource: "arn:aws:s3:::<s3_bucket_name>" with an explicit deny in a resource-based policy
+```
+Your S3 bucket is successfully blocking public connections!
+Note: if you try this API call with the `terraform` user it will succeed because the `terraform` user requires bucket access in order to provision and destroy the bucket.
+
+3. Next, test that the EC2 has direct access to the S3 bucket by using the same `download-key.sh` command from the [MySQL RDS Test](#MySQL)
+4. Once you have established a connection with the EC2, try the same command `aws s3 ls ...` command from step 2. If successful, then your EC2 has proper permissions to access the S3 bucket.
