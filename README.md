@@ -11,7 +11,8 @@
 ```bash
 # If using HTTPS
 git clone https://github.com/ccrawford4/hs-cloud-interview.git
-
+```
+```
 # If using SSH
 git clone git@github.com:ccrawford4/hs-cloud-interview.git
 ```
