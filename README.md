@@ -102,7 +102,7 @@ The script will SSH into the EC2 instance using the temporary key it created. Yo
 Last login: Sat Mar 15 16:00:02 2025 from 138.202.26.81
 [ec2-user@ip-10-0-1-110 ~]$
 ```
-4. Use the same MySQL command from before and verfiy that you can connect. You should see an output like so:
+4. Use the same MySQL command from before and verify that you can connect. You should see an output like so:
 ```bash
 Welcome to the MariaDB monitor.  Commands end with ; or \g.
 Your MySQL connection id is 33
