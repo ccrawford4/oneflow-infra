@@ -136,3 +136,13 @@ terraform apply
      aws s3 ls s3://<s3_bucket_name>/
      ```
    - A successful response confirms your EC2 has proper permissions to access the S3 bucket.
+
+## Deleting Resources
+To delete all resources within a workspace run the following:
+```bash
+terraform destroy
+```
+Once you have deleted all resources within a workspace, you can delete the workspace using the following:
+```bash
+terraform workspace delete <workspace name>
+```
