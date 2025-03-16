@@ -175,7 +175,7 @@ resource "aws_secretsmanager_secret_version" "ssh_key_secret_version" {
 
 # Create the AMI copy for the desired region
 resource "aws_ami_copy" "oneflow_ami_copy" {
-  name = "oneflow_ami_copy"
+  name = "oneflow_ami_copy-${terraform.workspace}"
   source_ami_id = var.settings.web_app.source_ami_id
   source_ami_region = var.settings.web_app.source_ami_region
 
@@ -234,7 +234,7 @@ resource "aws_iam_role_policy_attachment" "s3_access_attachment" {
 
 # Create instance profile
 resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "ec2_profile"
+  name = "ec2_profile-${terraform.workspace}"
   role = aws_iam_role.ec2_s3_access_role.name
 }
 
