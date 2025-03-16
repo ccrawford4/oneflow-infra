@@ -186,7 +186,7 @@ resource "aws_ami_copy" "oneflow_ami_copy" {
 
 # Create IAM role for EC2 instance
 resource "aws_iam_role" "ec2_s3_access_role" {
-  name = "ec2_s3_access_role"
+  name = "ec2_s3_access_role-${terraform.workspace}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -204,7 +204,7 @@ resource "aws_iam_role" "ec2_s3_access_role" {
 
 # Create IAM policy for S3 access
 resource "aws_iam_policy" "s3_access_policy" {
-  name        = "s3_access_policy"
+  name        = "s3_access_policy-${terraform.workspace}"
   description = "Policy to allow access to specific S3 bucket"
 
   policy = jsonencode({
