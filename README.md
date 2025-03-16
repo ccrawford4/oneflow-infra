@@ -63,6 +63,7 @@ terraform workspace select <workspace name>
 # Or create a new one
 terraform workspace new <aws region name>
 ```
+> Note: Do NOT select the default workspace
 4. Run terraform plan
 ```bash
 terraform plan
