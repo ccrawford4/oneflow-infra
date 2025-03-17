@@ -4,18 +4,17 @@
 This Terraform module provisions a complete, secure AWS environment with the following components:
 
 ### Resources Created
-* **VPC**: Isolated network environment in the target region
-* **EC2 Instance**: Configured with:
+* **VPC**
+* **EC2 Instance**
   * HTTPS (443) and SSH (22) ingress traffic only
   * Unrestricted egress traffic
-  * Automatically configured with access to other resources
-* **MySQL RDS Instance**: Database with:
-  * No public access (VPC-only connectivity)
-  * Appropriate security groups for EC2 communication
-* **S3 Bucket**: Storage bucket with:
+  * Automatically configured with access to RDS and S3
+* **MySQL RDS Instance**
+  * No public access (VPC-only)
+* **S3 Bucket**:
   * Access restricted to the `terraform` user and EC2 instance via IAM policies
 * **SecretsManager Key**: For secure SSH access to the EC2 instance
-* **Supporting Components**: All necessary:
+* **Supporting Components**
   * IAM policies and roles
   * Security groups
   * Network ACLs
