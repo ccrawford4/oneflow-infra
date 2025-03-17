@@ -1,5 +1,26 @@
 # OneFlow Infrastructure
 
+## About
+This Terraform module provisions a complete, secure AWS environment with the following components:
+
+### Resources Created
+* **VPC**: Isolated network environment in the target region
+* **EC2 Instance**: Configured with:
+  * HTTPS (443) and SSH (22) ingress traffic only
+  * Unrestricted egress traffic
+  * Automatically configured with access to other resources
+* **MySQL RDS Instance**: Database with:
+  * No public access (VPC-only connectivity)
+  * Appropriate security groups for EC2 communication
+* **S3 Bucket**: Storage bucket with:
+  * Access restricted to the `terraform` user and EC2 instance via IAM policies
+* **SecretsManager Key**: For secure SSH access to the EC2 instance
+* **Supporting Components**: All necessary:
+  * IAM policies and roles
+  * Security groups
+  * Network ACLs
+  * Route tables
+
 ## Prerequisites
 - [Terraform](https://developer.hashicorp.com/terraform/install) >= v1.10.5
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) >= 2.18.5
