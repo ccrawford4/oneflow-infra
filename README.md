@@ -1,9 +1,7 @@
 # OneFlow Infrastructure
 
 ## About
-This Terraform module provisions a complete, secure AWS environment with the following components:
-
-### Resources Created
+This Terraform module provisions a secure AWS environment with the following components:
 * **VPC**
 * **EC2 Instance**
   * HTTPS (443) and SSH (22) ingress traffic only
