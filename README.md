@@ -29,15 +29,15 @@ This Terraform module provisions a secure AWS environment with the following com
 1. Clone the repository
    ```bash
    # Using HTTPS
-   git clone https://github.com/ccrawford4/hs-cloud-interview.git
+   git clone https://github.com/ccrawford4/oneflow-infra.git
    
    # Or using SSH
-   git clone git@github.com:ccrawford4/hs-cloud-interview.git
+   git clone git@github.com:ccrawford4/oneflow-infra.git
    ```
 
 2. Navigate to the repository directory
    ```bash
-   cd hs-cloud-interview
+   cd oneflow-infra
    ```
 
 ## Environment Configuration
