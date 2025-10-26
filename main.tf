@@ -1,8 +1,4 @@
-resource "random_string" "random" {
-  length = 8
-  special = false
-  upper = false
-}
+resource "random_string" "random" {}
 
 locals {
   unique_prefix = "${var.environment}-${terraform.workspace}-${random_string.random.id}" # Use a unique prefix to resolve name conflicts
