@@ -19,7 +19,7 @@ locals {
 }
 
 provider "aws" {
-  region = terraform.workspace
+  region = "us-east-2"
 
   default_tags {
     tags = local.common_tags
